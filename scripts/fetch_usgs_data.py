@@ -1,6 +1,5 @@
 #fetch_usgs_data.py
 
-from cmath import e
 import requests
 import pandas as pd
 import time
