@@ -74,7 +74,6 @@ df_raw["updated"]=pd.to_datetime(df_raw["updated"],unit="ms",errors="coerce")
 print("Data shape:",df_raw.shape)
 print(df_raw.head())
 print(df_raw.dtypes)
-
 import os
 
 BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
