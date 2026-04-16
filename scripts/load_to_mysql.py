@@ -4,7 +4,7 @@ from urllib.parse import quote_plus
 
 
 DB_USER = "root"
-DB_PASSWORD =quote_plus("Keerthana7886@")   # <-- replace this
+DB_PASSWORD =quote_plus("Keerthana7886@")   
 DB_HOST = "localhost"
 DB_NAME = "global_seismic_trends"
 
