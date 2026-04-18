@@ -53,15 +53,27 @@ df["tz"] = df["tz"].fillna(0)
 
 
 # Country extraction
-
 def extract_country(place):
     if pd.isna(place):
         return "unknown"
+
+    # Try normal extraction
     match = re.search(r",\s*([A-Za-z\s]+)$", place)
     if match:
-        return match.group(1).strip()
-    return "unknown"
+        country = match.group(1).strip()
+        country = country.replace("Earthquake", "").strip()
+        return country
 
+    # 🔥 Fallback logic (NEW)
+    place_lower = place.lower()
+
+    if "region" in place_lower:
+        return place.split("region")[0].strip()
+
+    if "islands" in place_lower:
+        return place.split("islands")[0].strip()
+
+    return "unknown"
 df["country"] = df["place"].apply(extract_country)
 
 print(df[["place", "country"]].head(10))
