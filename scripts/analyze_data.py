@@ -20,9 +20,7 @@ df["time"] = pd.to_datetime(df["time"], errors="coerce")
 
 print("Data Loaded:", df.shape)
 
-# ===============================
-# 🔍 30 ANALYTICAL INSIGHTS
-# ===============================
+# 30 ANALYTICAL INSIGHTS
 
 # 1
 print("\n1. Top 10 strongest earthquakes")
@@ -160,4 +158,4 @@ print(df["strong_quake_flag"].mean() * 100)
 print("\n30. Avg magnitude by depth category")
 print(df.groupby("depth_category")["mag"].mean())
 
-print("\n✅ All 30 insights generated successfully!")
+print("\n All 30 insights generated successfully!")

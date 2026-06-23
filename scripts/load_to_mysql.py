@@ -42,5 +42,5 @@ df.to_sql(
     chunksize=5000
 )
 
-print("✅ Data successfully loaded into MySQL!")
+print(" Data successfully loaded into MySQL!")
 print("Total rows loaded:", len(df))

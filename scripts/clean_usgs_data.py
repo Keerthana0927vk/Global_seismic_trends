@@ -12,9 +12,7 @@ BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 # Raw data path
 RAW_PATH = os.path.join(BASE_DIR, "data", "raw", "usgs_earthquakes_raw.csv")
 
-
 # Load raw dataset
-
 df = pd.read_csv(RAW_PATH)
 print("RAW data columns loaded successfully")
 
@@ -22,9 +20,7 @@ print("Initial shape:", df.shape)
 print(df.head())
 print(df.dtypes)
 
-
 # Convert time columns
-
 df["time"] = pd.to_datetime(df["time"], errors="coerce")
 df["updated"] = pd.to_datetime(df["updated"], errors="coerce")
 df["tz"] = pd.to_numeric(df["tz"], errors="coerce").fillna(0)
@@ -33,11 +29,9 @@ print(df[["time", "updated"]].dtypes)
 
 
 # Missing values check
-
 print(df.isna().sum().sort_values(ascending=False))
 
 # Time based features
-
 df["year"] = df["time"].dt.year
 df["month"] = df["time"].dt.month
 df["day"] = df["time"].dt.day
@@ -64,7 +58,7 @@ def extract_country(place):
         country = country.replace("Earthquake", "").strip()
         return country
 
-    # 🔥 Fallback logic (NEW)
+    #  Fallback logic (NEW)
     place_lower = place.lower()
 
     if "region" in place_lower:
@@ -118,4 +112,4 @@ os.makedirs(PROCESSED_DIR, exist_ok=True)
 CLEAN_PATH = os.path.join(PROCESSED_DIR, "usgs_earthquakes_cleaned.csv")
 df.to_csv(CLEAN_PATH, index=False)
 
-print("✅ Cleaned earthquake data saved successfully.")
+print(" Cleaned earthquake data saved successfully.")

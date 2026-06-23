@@ -2,7 +2,7 @@
 
 import subprocess
 
-print("🚀 Starting Earthquake Data Pipeline...\n")
+print(" Starting Earthquake Data Pipeline...\n")
 
 # Step 1: Fetch data
 print("Step 1: Fetching data from USGS API...")
@@ -20,4 +20,4 @@ subprocess.run(["python", "scripts/load_to_mysql.py"])
 print("\nStep 4: Running analysis...")
 subprocess.run(["python", "scripts/analyze_data.py"])
 
-print("\n✅ Pipeline completed successfully!")
+print("\n Pipeline completed successfully!")
