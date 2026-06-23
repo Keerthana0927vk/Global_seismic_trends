@@ -16,6 +16,7 @@ engine = create_engine(
 
 print("Loading data...")
 df = pd.read_sql("SELECT * FROM earthquakes", engine)
+df["time"] = pd.to_datetime(df["time"], errors="coerce")
 
 print("Data Loaded:", df.shape)
 

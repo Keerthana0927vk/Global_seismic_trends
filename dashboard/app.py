@@ -4,16 +4,16 @@ import plotly.express as px
 from sqlalchemy import create_engine
 from urllib.parse import quote_plus
 
-# ------------------ PAGE CONFIG ------------------
+#  PAGE CONFIG 
 st.set_page_config(
     page_title="Global Seismic Trends",
     layout="wide"
 )
 
-st.title("🌍 Global Seismic Trends Dashboard")
+st.title(" Global Seismic Trends Dashboard")
 st.markdown("Interactive analysis of worldwide earthquakes (Last 5 Years)")
 
-# ------------------ DB CONNECTION ------------------
+#  DB CONNECTION 
 @st.cache_data
 def load_data():
     DB_USER = "root"
@@ -30,7 +30,7 @@ def load_data():
 
 df = load_data()
 
-# ------------------ SIDEBAR FILTERS ------------------
+#  SIDEBAR FILTERS 
 st.sidebar.header("Filters")
 
 year_filter = st.sidebar.multiselect(
@@ -61,7 +61,7 @@ filtered_df = df[
 if country_filter:
     filtered_df = filtered_df[filtered_df["country"].isin(country_filter)]
 
-# ------------------ KPI ------------------
+#  KPI 
 col1, col2, col3, col4 = st.columns(4)
 
 col1.metric("Total Earthquakes", len(filtered_df))
@@ -71,7 +71,7 @@ col4.metric("Tsunamis", (filtered_df["tsunami"] == 1).sum())
 
 st.divider()
 
-# ------------------ OVERVIEW CHARTS ------------------
+#  OVERVIEW CHARTS  
 
 # Year chart
 year_chart = filtered_df.groupby("year").size().reset_index(name="count")
@@ -88,10 +88,10 @@ st.plotly_chart(px.bar(top_countries, x="country", y="count", title="Top Countri
 map_df = filtered_df.sort_values("mag", ascending=False).head(3000)
 st.plotly_chart(px.scatter_geo(map_df, lat="latitude", lon="longitude", size="mag", color="mag"), use_container_width=True)
 
-# ------------------ INSIGHTS SIDEBAR ------------------
+#  INSIGHTS SIDEBAR 
 
 st.sidebar.divider()
-st.sidebar.header("📊 Insights Explorer")
+st.sidebar.header(" Insights Explorer")
 
 category = st.sidebar.selectbox(
     "Select Category",
@@ -142,10 +142,10 @@ else:
 
 insight_option = st.sidebar.selectbox("Select Insight", options)
 
-# ------------------ INSIGHT OUTPUT ------------------
+#  INSIGHT OUTPUT 
 
 st.divider()
-st.subheader("📊 Selected Insight")
+st.subheader(" Selected Insight")
 
 # BASIC
 if insight_option == "Top 10 Strongest Earthquakes":
