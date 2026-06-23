@@ -29,6 +29,7 @@ def load_data():
     return df
 
 df = load_data()
+df["time"] = pd.to_datetime(df["time"], errors="coerce")
 
 #  SIDEBAR FILTERS 
 st.sidebar.header("Filters")
@@ -62,12 +63,16 @@ if country_filter:
     filtered_df = filtered_df[filtered_df["country"].isin(country_filter)]
 
 #  KPI 
-col1, col2, col3, col4 = st.columns(4)
+col1, col2, col3, col4, col5 = st.columns(5)
 
 col1.metric("Total Earthquakes", len(filtered_df))
 col2.metric("Avg Magnitude", round(filtered_df["mag"].mean(), 2))
 col3.metric("Strong Quakes (mag>6)", filtered_df["strong_quake_flag"].sum())
 col4.metric("Tsunamis", (filtered_df["tsunami"] == 1).sum())
+col5.metric(
+    "Deepest Quake (km)",
+    round(filtered_df["depth_km"].max(), 2)
+)
 
 st.divider()
 
@@ -81,8 +86,97 @@ st.plotly_chart(px.bar(year_chart, x="year", y="count", title="Earthquakes per Y
 st.plotly_chart(px.histogram(filtered_df, x="mag", nbins=30, title="Magnitude Distribution"), use_container_width=True)
 
 # Top countries
-top_countries = filtered_df.groupby("country").size().reset_index(name="count").sort_values("count", ascending=False).head(10)
-st.plotly_chart(px.bar(top_countries, x="country", y="count", title="Top Countries"), use_container_width=True)
+country_df = filtered_df[
+    filtered_df["country"] != "unknown"
+]
+
+top_countries = (
+    country_df.groupby("country")
+    .size()
+    .reset_index(name="count")
+    .sort_values("count", ascending=False)
+    .head(10)
+)
+
+st.plotly_chart(
+    px.bar(
+        top_countries,
+        x="country",
+        y="count",
+        title="Top Countries"
+    ),
+    use_container_width=True
+)
+month_chart = (
+    filtered_df.groupby("month")
+    .size()
+    .reset_index(name="count")
+)
+
+st.plotly_chart(
+    px.line(
+        month_chart,
+        x="month",
+        y="count",
+        title="Earthquakes per Month"
+    ),
+    use_container_width=True
+)
+depth_chart = (
+    filtered_df["depth_category"]
+    .value_counts()
+    .reset_index()
+)
+
+depth_chart.columns = [
+    "depth_category",
+    "count"
+]
+
+st.plotly_chart(
+    px.pie(
+        depth_chart,
+        names="depth_category",
+        values="count",
+        title="Depth Category Distribution"
+    ),
+    use_container_width=True
+)
+st.divider()
+
+st.subheader("Key Findings")
+
+top_country = (
+    filtered_df[filtered_df["country"] != "unknown"]["country"]
+    .value_counts()
+    .idxmax()
+)
+
+top_year = (
+    filtered_df["year"]
+    .value_counts()
+    .idxmax()
+)
+
+st.write(
+    f"1. {top_country} recorded the highest number of earthquakes."
+)
+
+st.write(
+    f"2. Average earthquake magnitude is {filtered_df['mag'].mean():.2f}."
+)
+
+st.write(
+    f"3. Strong earthquakes (>6 magnitude) account for {filtered_df['strong_quake_flag'].mean()*100:.2f}% of all events."
+)
+
+st.write(
+    f"4. {top_year} recorded the highest seismic activity."
+)
+
+st.write(
+    f"5. Total tsunami-related events: {(filtered_df['tsunami']==1).sum()}."
+)
 
 # Map
 map_df = filtered_df.sort_values("mag", ascending=False).head(3000)
@@ -240,9 +334,38 @@ elif insight_option == "Tsunami vs Magnitude":
     st.bar_chart(filtered_df.groupby("tsunami_flag")["mag"].mean())
 
 elif insight_option == "Close-Time Earthquakes":
-    temp = filtered_df.sort_values("time")
-    temp["diff"] = temp["time"].diff().dt.total_seconds()/60
-    st.dataframe(temp[temp["diff"] < 60].head(20))
 
+    temp = filtered_df.copy()
+
+    temp["time"] = pd.to_datetime(
+        temp["time"],
+        errors="coerce"
+    )
+
+    temp = temp.sort_values("time")
+
+    temp["diff"] = (
+        temp["time"]
+        .diff()
+        .dt.total_seconds()/60
+    )
+
+    st.dataframe(
+        temp[temp["diff"] < 60].head(20)
+    )
 elif insight_option == "Top Countries by Frequency & Magnitude":
-    st.dataframe(filtered_df.groupby("country").agg(freq=("id","count"), avg_mag=("mag","mean")).head(10))
+
+    country_stats = (
+        filtered_df.groupby("country")
+        .agg(
+            freq=("id", "count"),
+            avg_mag=("mag", "mean")
+        )
+        .sort_values(
+            ["freq", "avg_mag"],
+            ascending=False
+        )
+        .head(10)
+    )
+
+    st.dataframe(country_stats)
