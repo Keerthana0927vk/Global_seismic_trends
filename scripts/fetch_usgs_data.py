@@ -7,7 +7,7 @@ import time
 #1.USGS API base URL
 BASE_URL= "https://earthquake.usgs.gov/fdsnws/event/1/query"
 
-#2.define time range (last 5 years example)
+#2.define time range
 START_YEAR=2021
 END_YEAR =2025
 
