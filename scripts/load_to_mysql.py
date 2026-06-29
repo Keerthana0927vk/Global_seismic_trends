@@ -16,15 +16,6 @@ TABLE_NAME = "earthquakes"
 print("Reading cleaned CSV...")
 df = pd.read_csv(CSV_PATH)
 
-print("Rows before removing duplicates:", len(df))
-
-# Remove duplicate earthquake IDs
-df = df.drop_duplicates(subset=["id"])
-df["id"] = df["id"].astype(str).str.strip()
-
-df = df.drop_duplicates(subset=["id"], keep="first")
-
-print("Rows after removing duplicates:", len(df))
 # Connect to MySQL
 print("Connecting to MySQL...")
 engine = create_engine(
