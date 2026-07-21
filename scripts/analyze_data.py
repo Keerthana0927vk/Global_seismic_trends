@@ -4,7 +4,7 @@ import pandas as pd
 from sqlalchemy import create_engine
 from urllib.parse import quote_plus
 
-# DB connection
+# Database Connection
 DB_USER = "root"
 DB_PASSWORD = quote_plus("Keerthana7886@")
 DB_HOST = "localhost"
@@ -14,148 +14,405 @@ engine = create_engine(
     f"mysql+pymysql://{DB_USER}:{DB_PASSWORD}@{DB_HOST}/{DB_NAME}"
 )
 
-print("Loading data...")
-df = pd.read_sql("SELECT * FROM earthquakes", engine)
-df["time"] = pd.to_datetime(df["time"], errors="coerce")
 
-print("Data Loaded:", df.shape)
+# 1. Top 10 Strongest Earthquakes
 
-# 30 ANALYTICAL INSIGHTS
+query = """
+SELECT place, country, mag, time
+FROM earthquakes
+ORDER BY mag DESC
+LIMIT 10;
+"""
+print("\n1. Top 10 Strongest Earthquakes")
+print(pd.read_sql(query, engine))
 
-# 1
-print("\n1. Top 10 strongest earthquakes")
-print(df.nlargest(10, "mag")[["place", "country", "mag", "time"]])
 
-# 2
-print("\n2. Top 10 deepest earthquakes")
-print(df.nlargest(10, "depth_km")[["place", "country", "depth_km"]])
+# 2. Top 10 Deepest Earthquakes
 
-# 3
-print("\n3. High magnitude shallow quakes")
-print(df[(df["depth_km"] < 50) & (df["mag"] > 7.5)].shape[0])
+query = """
+SELECT place, country, depth_km
+FROM earthquakes
+ORDER BY depth_km DESC
+LIMIT 10;
+"""
+print("\n2. Top 10 Deepest Earthquakes")
+print(pd.read_sql(query, engine))
 
-# 4
-print("\n4. Avg depth per country")
-print(df.groupby("country")["depth_km"].mean().sort_values(ascending=False).head(10))
 
-# 5
-print("\n5. Avg magnitude per magType")
-print(df.groupby("magType")["mag"].mean().sort_values(ascending=False))
+# 3. High Magnitude Shallow Quakes
 
-# 6
-print("\n6. Earthquakes per year")
-print(df.groupby("year").size())
+query = """
+SELECT *
+FROM earthquakes
+WHERE mag > 7.5
+AND depth_km < 50;
+"""
+print("\n3. High Magnitude Shallow Quakes")
+print(pd.read_sql(query, engine))
 
-# 7
-print("\n7. Earthquakes per month")
-print(df.groupby("month").size())
 
-# 8
-print("\n8. Earthquakes per day of week")
-print(df.groupby("day_of_week").size())
+# 4. Average Depth per Country
 
-# 9
-print("\n9. Top networks")
-print(df["net"].value_counts().head(10))
+query = """
+SELECT country,
+AVG(depth_km) AS avg_depth
+FROM earthquakes
+GROUP BY country
+ORDER BY avg_depth DESC
+LIMIT 10;
+"""
+print("\n4. Average Depth per Country")
+print(pd.read_sql(query, engine))
 
-# 10
-print("\n10. Total earthquakes")
-print(len(df))
 
-# 11
-print("\n11. Unique alert levels")
-print(df["alert"].unique())
+# 5. Average Magnitude by magType
 
-# 12
-print("\n12. Status distribution")
-print(df["status"].value_counts())
+query = """
+SELECT magType,
+AVG(mag) AS avg_mag
+FROM earthquakes
+GROUP BY magType
+ORDER BY avg_mag DESC;
+"""
+print("\n5. Average Magnitude by magType")
+print(pd.read_sql(query, engine))
 
-# 13
-print("\n13. Type distribution")
-print(df["type"].value_counts())
 
-# 14
-print("\n14. Data quality (origin / dyfi etc)")
-print({
-    "origin": df["types"].str.contains("origin", na=False).sum(),
-    "phase_data": df["types"].str.contains("phase-data", na=False).sum(),
-    "dyfi": df["types"].str.contains("dyfi", na=False).sum()
-})
+# 6. Earthquakes per Year
 
-# 15
-print("\n15. Avg RMS & GAP per country")
-print(df.groupby("country")[["rms", "gap"]].mean().head(10))
+query = """
+SELECT year,
+COUNT(*) AS total_earthquakes
+FROM earthquakes
+GROUP BY year
+ORDER BY year;
+"""
+print("\n6. Earthquakes per Year")
+print(pd.read_sql(query, engine))
 
-# 16
-print("\n16. High station count (nst > 50)")
-print(df[df["nst"] > 50].shape[0])
 
-# 17
-print("\n17. Tsunami events per year")
-print(df[df["tsunami"] == 1].groupby("year").size())
+# 7. Earthquakes per Month
 
-# 18
-print("\n18. Alert level count")
-print(df["alert"].value_counts())
+query = """
+SELECT month,
+COUNT(*) AS total_earthquakes
+FROM earthquakes
+GROUP BY month
+ORDER BY month;
+"""
+print("\n7. Earthquakes per Month")
+print(pd.read_sql(query, engine))
 
-# 19
-print("\n19. Top 5 countries last 10 years")
-recent = df[df["year"] >= df["year"].max() - 10]
-print(recent.groupby("country")["mag"].mean().sort_values(ascending=False).head(5))
 
-# 20
-print("\n20. Countries with shallow & deep quakes same month")
-combo = df.groupby(["country", "year", "month"])["depth_category"].nunique()
-print(combo[combo > 1].head(10))
+# 8. Earthquakes per Day of Week
 
-# 21
-print("\n21. Year-over-year growth")
-year_counts = df.groupby("year").size()
-growth = year_counts.pct_change() * 100
-print(growth)
+query = """
+SELECT day_of_week,
+COUNT(*) AS total
+FROM earthquakes
+GROUP BY day_of_week;
+"""
+print("\n8. Earthquakes per Day")
+print(pd.read_sql(query, engine))
 
-# 22
-print("\n22. Top 3 countries by frequency & magnitude")
-print(df.groupby("country").agg(
-    freq=("id", "count"),
-    avg_mag=("mag", "mean")
-).sort_values(["freq", "avg_mag"], ascending=False).head(3))
 
-# 23
-print("\n23. Equatorial region analysis")
-print(df[(df["latitude"] >= -5) & (df["latitude"] <= 5)]
-      .groupby("country")["depth_km"].mean().head(10))
+# 9. Top Networks
 
-# 24
-print("\n24. Shallow vs deep ratio")
-ratio = df.groupby("country")["depth_category"].value_counts().unstack().fillna(0)
-ratio["ratio"] = ratio.get("shallow", 0) / (ratio.get("deep", 0) + 1)
-print(ratio.sort_values("ratio", ascending=False).head(10))
+query = """
+SELECT net,
+COUNT(*) AS total
+FROM earthquakes
+GROUP BY net
+ORDER BY total DESC
+LIMIT 10;
+"""
+print("\n9. Top Networks")
+print(pd.read_sql(query, engine))
 
-# 25
-print("\n25. Tsunami vs magnitude")
-print(df.groupby("tsunami_flag")["mag"].mean())
 
-# 26
-print("\n26. Poor quality signals")
-print(df.sort_values(["gap", "rms"], ascending=False).head(10))
+# 10. Total Earthquakes
 
-# 27
-print("\n27. Close-time earthquakes (<1hr)")
-df_sorted = df.sort_values("time")
-df_sorted["time_diff"] = df_sorted["time"].diff().dt.total_seconds() / 60
-print(df_sorted[df_sorted["time_diff"] < 60].head(10))
+query = """
+SELECT COUNT(*) AS Total_Earthquakes
+FROM earthquakes;
+"""
+print("\n10. Total Earthquakes")
+print(pd.read_sql(query, engine))
 
-# 28
-print("\n28. Deep quakes (>300km)")
-print(df[df["depth_km"] > 300].groupby("country").size().head(10))
 
-# 29
-print("\n29. Strong quake percentage")
-print(df["strong_quake_flag"].mean() * 100)
+# 11. Alert Levels
 
-# 30
-print("\n30. Avg magnitude by depth category")
-print(df.groupby("depth_category")["mag"].mean())
+query = """
+SELECT DISTINCT alert
+FROM earthquakes;
+"""
+print("\n11. Alert Levels")
+print(pd.read_sql(query, engine))
 
-print("\n All 30 insights generated successfully!")
+
+# 12. Status Distribution
+
+query = """
+SELECT status,
+COUNT(*) AS total
+FROM earthquakes
+GROUP BY status;
+"""
+print("\n12. Status Distribution")
+print(pd.read_sql(query, engine))
+
+
+# 13. Type Distribution
+
+query = """
+SELECT type,
+COUNT(*) AS total
+FROM earthquakes
+GROUP BY type
+ORDER BY total DESC;
+"""
+print("\n13. Type Distribution")
+print(pd.read_sql(query, engine))
+
+
+# 14. Data Quality
+
+query = """
+SELECT
+SUM(types LIKE '%%origin%%') AS origin,
+SUM(types LIKE '%%phase-data%%') AS phase_data,
+SUM(types LIKE '%%dyfi%%') AS dyfi
+FROM earthquakes;
+"""
+print("\n14. Data Quality")
+print(pd.read_sql(query, engine))
+
+# 15. Average RMS & GAP per Country
+
+query = """
+SELECT country,
+AVG(rms) AS avg_rms,
+AVG(gap) AS avg_gap
+FROM earthquakes
+GROUP BY country
+LIMIT 10;
+"""
+print("\n15. Average RMS & GAP per Country")
+print(pd.read_sql(query, engine))
+
+# 16. High Station Count (nst > 50)
+
+query = """
+SELECT *
+FROM earthquakes
+WHERE nst > 50;
+"""
+print("\n16. High Station Count")
+print(pd.read_sql(query, engine))
+
+
+# 17. Tsunami Events per Year
+
+query = """
+SELECT year,
+COUNT(*) AS tsunami_events
+FROM earthquakes
+WHERE tsunami = 1
+GROUP BY year
+ORDER BY year;
+"""
+print("\n17. Tsunami Events per Year")
+print(pd.read_sql(query, engine))
+
+
+# 18. Alert Level Count
+
+query = """
+SELECT alert,
+COUNT(*) AS total
+FROM earthquakes
+GROUP BY alert;
+"""
+print("\n18. Alert Level Count")
+print(pd.read_sql(query, engine))
+
+
+# 19. Top 5 Countries by Average Magnitude
+
+query = """
+SELECT country,
+AVG(mag) AS avg_magnitude
+FROM earthquakes
+GROUP BY country
+ORDER BY avg_magnitude DESC
+LIMIT 5;
+"""
+print("\n19. Top 5 Countries by Average Magnitude")
+print(pd.read_sql(query, engine))
+
+
+# 20. Countries with Shallow & Deep Quakes in Same Month
+
+query = """
+SELECT country,
+year,
+month,
+COUNT(DISTINCT depth_category) AS depth_types
+FROM earthquakes
+GROUP BY country, year, month
+HAVING COUNT(DISTINCT depth_category) > 1;
+"""
+print("\n20. Countries with Shallow & Deep Quakes")
+print(pd.read_sql(query, engine))
+
+
+# 21. Year-over-Year Growth
+
+query = """
+WITH yearly AS
+(
+SELECT year,
+COUNT(*) AS total
+FROM earthquakes
+GROUP BY year
+)
+SELECT year,
+total,
+LAG(total) OVER(ORDER BY year) AS previous_year,
+ROUND(
+((total-LAG(total) OVER(ORDER BY year))
+/
+LAG(total) OVER(ORDER BY year))*100,2
+) AS growth_percent
+FROM yearly;
+"""
+print("\n21. Year-over-Year Growth")
+print(pd.read_sql(query, engine))
+
+
+# 22. Top 3 Countries by Frequency & Magnitude
+
+query = """
+SELECT country,
+COUNT(*) AS frequency,
+AVG(mag) AS avg_magnitude
+FROM earthquakes
+GROUP BY country
+ORDER BY frequency DESC,
+avg_magnitude DESC
+LIMIT 3;
+"""
+print("\n22. Top 3 Countries")
+print(pd.read_sql(query, engine))
+
+
+# 23. Equatorial Region Analysis
+
+query = """
+SELECT country,
+AVG(depth_km) AS avg_depth
+FROM earthquakes
+WHERE latitude BETWEEN -5 AND 5
+GROUP BY country;
+"""
+print("\n23. Equatorial Region Analysis")
+print(pd.read_sql(query, engine))
+
+
+# 24. Shallow vs Deep Ratio
+
+query = """
+SELECT country,
+SUM(depth_category='Shallow') AS shallow,
+SUM(depth_category='Deep') AS deep
+FROM earthquakes
+GROUP BY country;
+"""
+print("\n24. Shallow vs Deep Ratio")
+print(pd.read_sql(query, engine))
+
+
+# 25. Tsunami vs Average Magnitude
+
+query = """
+SELECT tsunami_flag,
+AVG(mag) AS avg_magnitude
+FROM earthquakes
+GROUP BY tsunami_flag;
+"""
+print("\n25. Tsunami vs Magnitude")
+print(pd.read_sql(query, engine))
+
+
+# 26. Poor Quality Signals
+
+query = """
+SELECT place,
+country,
+gap,
+rms
+FROM earthquakes
+ORDER BY gap DESC,rms DESC
+LIMIT 10;
+"""
+print("\n26. Poor Quality Signals")
+print(pd.read_sql(query, engine))
+
+
+# 27. Close-Time Earthquakes (<1 Hour)
+
+query = """
+SELECT
+id,
+place,
+time,
+TIMESTAMPDIFF(
+MINUTE,
+LAG(time) OVER(ORDER BY time),
+time
+) AS time_difference
+FROM earthquakes;
+"""
+print("\n27. Close-Time Earthquakes")
+print(pd.read_sql(query, engine))
+
+
+# 28. Deep Earthquakes (>300 km)
+
+query = """
+SELECT country,
+COUNT(*) AS total
+FROM earthquakes
+WHERE depth_km > 300
+GROUP BY country
+ORDER BY total DESC;
+"""
+print("\n28. Deep Earthquakes")
+print(pd.read_sql(query, engine))
+
+
+# 29. Strong Earthquake Percentage
+
+query = """
+SELECT
+ROUND(
+AVG(strong_quake_flag)*100,2
+) AS strong_percentage
+FROM earthquakes;
+"""
+print("\n29. Strong Earthquake Percentage")
+print(pd.read_sql(query, engine))
+
+
+# 30. Average Magnitude by Depth Category
+
+query = """
+SELECT depth_category,
+AVG(mag) AS avg_magnitude
+FROM earthquakes
+GROUP BY depth_category;
+"""
+print("\n30. Average Magnitude by Depth Category")
+print(pd.read_sql(query, engine))
+
+print("\n✅ All 30 SQL Analyses Completed Successfully")

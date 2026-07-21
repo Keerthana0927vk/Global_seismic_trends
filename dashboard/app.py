@@ -1,371 +1,489 @@
 import streamlit as st
 import pandas as pd
-import plotly.express as px
 from sqlalchemy import create_engine
 from urllib.parse import quote_plus
+import plotly.express as px
 
-#  PAGE CONFIG 
+
+# PAGE CONFIGURATION
 st.set_page_config(
-    page_title="Global Seismic Trends",
+    page_title="Global Seismic Trends Dashboard",
     layout="wide"
 )
 
 st.title(" Global Seismic Trends Dashboard")
-st.markdown("Interactive analysis of worldwide earthquakes (Last 5 Years)")
+st.write("Interactive Dashboard for Earthquake Analysis")
 
-#  DB CONNECTION 
-@st.cache_data
-def load_data():
-    DB_USER = "root"
-    DB_PASSWORD = quote_plus("Keerthana7886@")
-    DB_HOST = "localhost"
-    DB_NAME = "global_seismic_trends"
 
-    engine = create_engine(
-        f"mysql+pymysql://{DB_USER}:{DB_PASSWORD}@{DB_HOST}/{DB_NAME}"
-    )
+# DATABASE CONNECTION
+DB_USER = "root"
+DB_PASSWORD = quote_plus("Keerthana7886@")
+DB_HOST = "localhost"
+DB_NAME = "global_seismic_trends"
 
-    df = pd.read_sql("SELECT * FROM earthquakes", engine)
-    return df
+engine = create_engine(
+    f"mysql+pymysql://{DB_USER}:{DB_PASSWORD}@{DB_HOST}/{DB_NAME}"
+)
 
-df = load_data()
-df["time"] = pd.to_datetime(df["time"], errors="coerce")
 
-#  SIDEBAR FILTERS 
+# SIDEBAR FILTERS
 st.sidebar.header("Filters")
 
-year_filter = st.sidebar.multiselect(
+# Year Filter
+year_df = pd.read_sql(
+    "SELECT DISTINCT year FROM earthquakes ORDER BY year",
+    engine
+)
+
+selected_year = st.sidebar.selectbox(
     "Select Year",
-    options=sorted(df["year"].unique()),
-    default=sorted(df["year"].unique())
+    ["All"] + year_df["year"].astype(str).tolist()
 )
 
-mag_range = st.sidebar.slider(
-    "Magnitude Range",
-    float(df["mag"].min()),
-    float(df["mag"].max()),
-    (float(df["mag"].min()), float(df["mag"].max()))
+# Country Filter
+country_df = pd.read_sql(
+    "SELECT DISTINCT country FROM earthquakes WHERE country IS NOT NULL ORDER BY country",
+    engine
 )
 
-country_filter = st.sidebar.multiselect(
-    "Country",
-    options=sorted(df["country"].unique()),
-    default=[]
+selected_country = st.sidebar.selectbox(
+    "Select Country",
+    ["All"] + country_df["country"].tolist()
 )
 
-# Apply filters
-filtered_df = df[
-    (df["year"].isin(year_filter)) &
-    (df["mag"].between(mag_range[0], mag_range[1]))
-]
-
-if country_filter:
-    filtered_df = filtered_df[filtered_df["country"].isin(country_filter)]
-
-#  KPI 
-col1, col2, col3, col4, col5 = st.columns(5)
-
-col1.metric("Total Earthquakes", len(filtered_df))
-col2.metric("Avg Magnitude", round(filtered_df["mag"].mean(), 2))
-col3.metric("Strong Quakes (mag>6)", filtered_df["strong_quake_flag"].sum())
-col4.metric("Tsunamis", (filtered_df["tsunami"] == 1).sum())
-col5.metric(
-    "Deepest Quake (km)",
-    round(filtered_df["depth_km"].max(), 2)
+# Magnitude Filter
+selected_mag = st.sidebar.slider(
+    "Minimum Magnitude",
+    min_value=2.5,
+    max_value=10.0,
+    value=2.5,
+    step=0.1
 )
 
-st.divider()
 
-#  OVERVIEW CHARTS  
+# SQL ANALYSIS
+st.subheader("SQL Analysis")
 
-# Year chart
-year_chart = filtered_df.groupby("year").size().reset_index(name="count")
-st.plotly_chart(px.bar(year_chart, x="year", y="count", title="Earthquakes per Year"), use_container_width=True)
+sql_queries = {
 
-# Magnitude distribution
-st.plotly_chart(px.histogram(filtered_df, x="mag", nbins=30, title="Magnitude Distribution"), use_container_width=True)
+"1. Top 10 Strongest Earthquakes":
+"""
+SELECT place,country,mag,time
+FROM earthquakes
+ORDER BY mag DESC
+LIMIT 10;
+""",
 
-# Top countries
-country_df = filtered_df[
-    filtered_df["country"] != "unknown"
-]
+"2. Top 10 Deepest Earthquakes":
+"""
+SELECT place,country,depth_km
+FROM earthquakes
+ORDER BY depth_km DESC
+LIMIT 10;
+""",
 
-top_countries = (
-    country_df.groupby("country")
-    .size()
-    .reset_index(name="count")
-    .sort_values("count", ascending=False)
-    .head(10)
+"3. High Magnitude Shallow Quakes":
+"""
+SELECT *
+FROM earthquakes
+WHERE mag>7.5
+AND depth_km<50;
+""",
+
+"4. Average Depth per Country":
+"""
+SELECT country,
+AVG(depth_km) AS avg_depth
+FROM earthquakes
+GROUP BY country
+ORDER BY avg_depth DESC
+LIMIT 10;
+""",
+
+"5. Average Magnitude by magType":
+"""
+SELECT magType,
+AVG(mag) AS avg_mag
+FROM earthquakes
+GROUP BY magType
+ORDER BY avg_mag DESC;
+""",
+
+"6. Earthquakes per Year":
+"""
+SELECT year,
+COUNT(*) AS total
+FROM earthquakes
+GROUP BY year
+ORDER BY year;
+""",
+
+"7. Earthquakes per Month":
+"""
+SELECT month,
+COUNT(*) AS total
+FROM earthquakes
+GROUP BY month
+ORDER BY month;
+""",
+
+"8. Earthquakes per Day":
+"""
+SELECT day_of_week,
+COUNT(*) AS total
+FROM earthquakes
+GROUP BY day_of_week;
+""",
+
+"9. Top Networks":
+"""
+SELECT net,
+COUNT(*) AS total
+FROM earthquakes
+GROUP BY net
+ORDER BY total DESC
+LIMIT 10;
+""",
+
+"10. Total Earthquakes":
+"""
+SELECT COUNT(*) AS Total_Earthquakes
+FROM earthquakes;
+""",
+
+"11. Alert Levels":
+"""
+SELECT DISTINCT alert
+FROM earthquakes;
+""",
+
+"12. Status Distribution":
+"""
+SELECT status,
+COUNT(*) AS total
+FROM earthquakes
+GROUP BY status;
+""",
+
+"13. Type Distribution":
+"""
+SELECT type,
+COUNT(*) AS total
+FROM earthquakes
+GROUP BY type;
+""",
+
+"14. Data Quality":
+"""
+SELECT
+SUM(types LIKE '%origin%') AS origin,
+SUM(types LIKE '%phase-data%') AS phase_data,
+SUM(types LIKE '%dyfi%') AS dyfi
+FROM earthquakes;
+""",
+
+"15. Average RMS & GAP":
+"""
+SELECT country,
+AVG(rms) AS avg_rms,
+AVG(gap) AS avg_gap
+FROM earthquakes
+GROUP BY country;
+""",
+
+"16. High Station Count":
+"""
+SELECT *
+FROM earthquakes
+WHERE nst>50;
+""",
+
+"17. Tsunami Events per Year":
+"""
+SELECT year,
+COUNT(*) AS tsunami_events
+FROM earthquakes
+WHERE tsunami=1
+GROUP BY year;
+""",
+
+"18. Alert Level Count":
+"""
+SELECT alert,
+COUNT(*) AS total
+FROM earthquakes
+GROUP BY alert;
+""",
+
+"19. Top 5 Countries by Average Magnitude":
+"""
+SELECT country,
+AVG(mag) AS avg_mag
+FROM earthquakes
+GROUP BY country
+ORDER BY avg_mag DESC
+LIMIT 5;
+""",
+
+"20. Countries with Shallow & Deep":
+"""
+SELECT country,year,month,
+COUNT(DISTINCT depth_category) AS depth_types
+FROM earthquakes
+GROUP BY country,year,month
+HAVING COUNT(DISTINCT depth_category)>1;
+""",
+
+"21. Year over Year Growth":
+"""
+SELECT year,
+COUNT(*) AS total
+FROM earthquakes
+GROUP BY year;
+""",
+
+"22. Top 3 Countries":
+"""
+SELECT country,
+COUNT(*) AS frequency,
+AVG(mag) AS avg_mag
+FROM earthquakes
+GROUP BY country
+ORDER BY frequency DESC
+LIMIT 3;
+""",
+
+"23. Equatorial Region":
+"""
+SELECT country,
+AVG(depth_km) AS avg_depth
+FROM earthquakes
+WHERE latitude BETWEEN -5 AND 5
+GROUP BY country;
+""",
+
+"24. Shallow vs Deep":
+"""
+SELECT country,
+SUM(depth_category='Shallow') AS shallow,
+SUM(depth_category='Deep') AS deep
+FROM earthquakes
+GROUP BY country;
+""",
+
+"25. Tsunami vs Magnitude":
+"""
+SELECT tsunami_flag,
+AVG(mag) AS avg_mag
+FROM earthquakes
+GROUP BY tsunami_flag;
+""",
+
+"26. Poor Quality Signals":
+"""
+SELECT place,country,gap,rms
+FROM earthquakes
+ORDER BY gap DESC,rms DESC
+LIMIT 10;
+""",
+
+"27. Close Time Earthquakes":
+"""
+SELECT id,place,time
+FROM earthquakes
+ORDER BY time;
+""",
+
+"28. Deep Earthquakes":
+"""
+SELECT country,
+COUNT(*) AS total
+FROM earthquakes
+WHERE depth_km>300
+GROUP BY country;
+""",
+
+"29. Strong Earthquake Percentage":
+"""
+SELECT ROUND(AVG(strong_quake_flag)*100,2) AS strong_percentage
+FROM earthquakes;
+""",
+
+"30. Average Magnitude by Depth":
+"""
+SELECT depth_category,
+AVG(mag) AS avg_mag
+FROM earthquakes
+GROUP BY depth_category;
+"""
+
+}
+
+selected_query = st.selectbox(
+    "Select SQL Analysis",
+    list(sql_queries.keys())
 )
 
-st.plotly_chart(
-    px.bar(
-        top_countries,
-        x="country",
-        y="count",
-        title="Top Countries"
-    ),
-    use_container_width=True
+run = st.button(" Run Query")
+
+# RUN QUERY
+
+if run:
+
+    query = sql_queries[selected_query]
+
+    try:
+
+        result = pd.read_sql(query, engine)
+
+        st.success(" Query Executed Successfully")
+
+        
+        # CHART
+        st.subheader(" Visualization")
+
+        if selected_query == "4. Average Depth per Country":
+
+            fig = px.bar(
+                result,
+                x="country",
+                y="avg_depth",
+                title="Average Depth by Country"
+            )
+            st.plotly_chart(fig, use_container_width=True)
+
+        elif selected_query == "5. Average Magnitude by magType":
+
+            fig = px.bar(
+                result,
+                x="magType",
+                y="avg_mag",
+                title="Average Magnitude by magType"
+            )
+            st.plotly_chart(fig, use_container_width=True)
+
+        elif selected_query == "6. Earthquakes per Year":
+
+            fig = px.line(
+                result,
+                x="year",
+                y="total",
+                markers=True,
+                title="Earthquakes per Year"
+            )
+            st.plotly_chart(fig, use_container_width=True)
+
+        elif selected_query == "7. Earthquakes per Month":
+
+            fig = px.bar(
+                result,
+                x="month",
+                y="total",
+                title="Earthquakes per Month"
+            )
+            st.plotly_chart(fig, use_container_width=True)
+
+        elif selected_query == "8. Earthquakes per Day":
+
+            fig = px.bar(
+                result,
+                x="day_of_week",
+                y="total",
+                title="Earthquakes by Day of Week"
+            )
+            st.plotly_chart(fig, use_container_width=True)
+
+        elif selected_query == "9. Top Networks":
+
+            fig = px.bar(
+                result,
+                x="net",
+                y="total",
+                title="Top Networks"
+            )
+            st.plotly_chart(fig, use_container_width=True)
+
+        elif selected_query == "17. Tsunami Events per Year":
+
+            fig = px.line(
+                result,
+                x="year",
+                y="tsunami_events",
+                markers=True,
+                title="Tsunami Events per Year"
+            )
+            st.plotly_chart(fig, use_container_width=True)
+
+        elif selected_query == "18. Alert Level Count":
+
+            fig = px.pie(
+                result,
+                names="alert",
+                values="total",
+                title="Alert Level Distribution"
+            )
+            st.plotly_chart(fig, use_container_width=True)
+
+        elif selected_query == "19. Top 5 Countries by Average Magnitude":
+
+            fig = px.bar(
+                result,
+                x="country",
+                y="avg_mag",
+                title="Top 5 Countries by Average Magnitude"
+            )
+            st.plotly_chart(fig, use_container_width=True)
+
+        elif selected_query == "22. Top 3 Countries":
+
+            fig = px.bar(
+                result,
+                x="country",
+                y="frequency",
+                title="Top 3 Countries"
+            )
+            st.plotly_chart(fig, use_container_width=True)
+
+        elif selected_query == "28. Deep Earthquakes":
+
+            fig = px.bar(
+                result,
+                x="country",
+                y="total",
+                title="Deep Earthquakes (>300 km)"
+            )
+            st.plotly_chart(fig, use_container_width=True)
+
+        elif selected_query == "30. Average Magnitude by Depth":
+
+            fig = px.bar(
+                result,
+                x="depth_category",
+                y="avg_mag",
+                title="Average Magnitude by Depth Category"
+            )
+            st.plotly_chart(fig, use_container_width=True)
+
+        else:
+
+            st.info("No chart available for this analysis.")
+
+
+        # RESULT TABLE
+        st.subheader(" Query Result")
+
+        st.dataframe(result, use_container_width=True)
+
+    except Exception as e:
+
+        st.error(f" {e}")
+
+
+# FOOTER
+
+
+st.markdown("---")
+st.markdown(
+    "<center><b>Developed by Keerthana | Global Seismic Trends Project</b></center>",
+    unsafe_allow_html=True
 )
-month_chart = (
-    filtered_df.groupby("month")
-    .size()
-    .reset_index(name="count")
-)
-
-st.plotly_chart(
-    px.line(
-        month_chart,
-        x="month",
-        y="count",
-        title="Earthquakes per Month"
-    ),
-    use_container_width=True
-)
-depth_chart = (
-    filtered_df["depth_category"]
-    .value_counts()
-    .reset_index()
-)
-
-depth_chart.columns = [
-    "depth_category",
-    "count"
-]
-
-st.plotly_chart(
-    px.pie(
-        depth_chart,
-        names="depth_category",
-        values="count",
-        title="Depth Category Distribution"
-    ),
-    use_container_width=True
-)
-st.divider()
-
-st.subheader("Key Findings")
-
-top_country = (
-    filtered_df[filtered_df["country"] != "unknown"]["country"]
-    .value_counts()
-    .idxmax()
-)
-
-top_year = (
-    filtered_df["year"]
-    .value_counts()
-    .idxmax()
-)
-
-st.write(
-    f"1. {top_country} recorded the highest number of earthquakes."
-)
-
-st.write(
-    f"2. Average earthquake magnitude is {filtered_df['mag'].mean():.2f}."
-)
-
-st.write(
-    f"3. Strong earthquakes (>6 magnitude) account for {filtered_df['strong_quake_flag'].mean()*100:.2f}% of all events."
-)
-
-st.write(
-    f"4. {top_year} recorded the highest seismic activity."
-)
-
-st.write(
-    f"5. Total tsunami-related events: {(filtered_df['tsunami']==1).sum()}."
-)
-
-# Map
-map_df = filtered_df.sort_values("mag", ascending=False).head(3000)
-st.plotly_chart(px.scatter_geo(map_df, lat="latitude", lon="longitude", size="mag", color="mag"), use_container_width=True)
-
-#  INSIGHTS SIDEBAR 
-
-st.sidebar.divider()
-st.sidebar.header(" Insights Explorer")
-
-category = st.sidebar.selectbox(
-    "Select Category",
-    ["Basic Insights", "Trend Analysis", "Advanced Insights"]
-)
-
-if category == "Basic Insights":
-    options = [
-        "Top 10 Strongest Earthquakes",
-        "Top 10 Deepest Earthquakes",
-        "Total Earthquakes",
-        "Top Networks",
-        "Alert Levels",
-        "Status Distribution",
-        "Type Distribution",
-        "Strong Earthquake %",
-        "Tsunami Distribution",
-        "Magnitude Distribution"
-    ]
-
-elif category == "Trend Analysis":
-    options = [
-        "Yearly Trend",
-        "Monthly Trend",
-        "Day-wise Trend",
-        "Top Countries",
-        "Avg Magnitude by Country",
-        "Tsunami per Year",
-        "High Station Count",
-        "Depth Category Analysis",
-        "Equatorial Analysis",
-        "Deep Earthquakes by Country"
-    ]
-
-else:
-    options = [
-        "High Magnitude Shallow Quakes",
-        "Avg Depth per Country",
-        "Avg Magnitude by magType",
-        "Data Quality Metrics",
-        "RMS & GAP Analysis",
-        "YOY Growth",
-        "Shallow vs Deep Ratio",
-        "Tsunami vs Magnitude",
-        "Close-Time Earthquakes",
-        "Top Countries by Frequency & Magnitude"
-    ]
-
-insight_option = st.sidebar.selectbox("Select Insight", options)
-
-#  INSIGHT OUTPUT 
-
-st.divider()
-st.subheader(" Selected Insight")
-
-# BASIC
-if insight_option == "Top 10 Strongest Earthquakes":
-    st.dataframe(filtered_df.nlargest(10, "mag"))
-
-elif insight_option == "Top 10 Deepest Earthquakes":
-    st.dataframe(filtered_df.nlargest(10, "depth_km"))
-
-elif insight_option == "Total Earthquakes":
-    st.metric("Total Earthquakes", len(filtered_df))
-
-elif insight_option == "Top Networks":
-    st.bar_chart(filtered_df["net"].value_counts().head(10))
-
-elif insight_option == "Alert Levels":
-    st.bar_chart(filtered_df["alert"].value_counts())
-
-elif insight_option == "Status Distribution":
-    st.bar_chart(filtered_df["status"].value_counts())
-
-elif insight_option == "Type Distribution":
-    st.bar_chart(filtered_df["type"].value_counts().head(10))
-
-elif insight_option == "Strong Earthquake %":
-    st.metric("Strong %", f"{filtered_df['strong_quake_flag'].mean()*100:.2f}%")
-
-elif insight_option == "Tsunami Distribution":
-    st.bar_chart(filtered_df["tsunami_flag"].value_counts())
-
-elif insight_option == "Magnitude Distribution":
-    st.plotly_chart(px.histogram(filtered_df, x="mag"))
-
-# TREND
-elif insight_option == "Yearly Trend":
-    st.bar_chart(filtered_df.groupby("year").size())
-
-elif insight_option == "Monthly Trend":
-    st.line_chart(filtered_df.groupby("month").size())
-
-elif insight_option == "Day-wise Trend":
-    st.bar_chart(filtered_df.groupby("day_of_week").size())
-
-elif insight_option == "Top Countries":
-    st.bar_chart(filtered_df["country"].value_counts().head(10))
-
-elif insight_option == "Avg Magnitude by Country":
-    st.bar_chart(filtered_df.groupby("country")["mag"].mean().head(10))
-
-elif insight_option == "Tsunami per Year":
-    st.bar_chart(filtered_df[filtered_df["tsunami"] == 1].groupby("year").size())
-
-elif insight_option == "High Station Count":
-    st.metric("Count", filtered_df[filtered_df["nst"] > 50].shape[0])
-
-elif insight_option == "Depth Category Analysis":
-    st.bar_chart(filtered_df["depth_category"].value_counts())
-
-elif insight_option == "Equatorial Analysis":
-    st.dataframe(filtered_df[(filtered_df["latitude"].between(-5, 5))].head(100))
-
-elif insight_option == "Deep Earthquakes by Country":
-    st.bar_chart(filtered_df[filtered_df["depth_km"] > 300]["country"].value_counts().head(10))
-
-# ADVANCED
-elif insight_option == "High Magnitude Shallow Quakes":
-    st.dataframe(filtered_df[(filtered_df["depth_km"] < 50) & (filtered_df["mag"] > 7.5)])
-
-elif insight_option == "Avg Depth per Country":
-    st.bar_chart(filtered_df.groupby("country")["depth_km"].mean().head(10))
-
-elif insight_option == "Avg Magnitude by magType":
-    st.bar_chart(filtered_df.groupby("magType")["mag"].mean())
-
-elif insight_option == "Data Quality Metrics":
-    st.write({
-        "origin": filtered_df["types"].str.contains("origin", na=False).sum(),
-        "phase": filtered_df["types"].str.contains("phase", na=False).sum()
-    })
-
-elif insight_option == "RMS & GAP Analysis":
-    st.dataframe(filtered_df.groupby("country")[["rms", "gap"]].mean().head(20))
-
-elif insight_option == "YOY Growth":
-    st.line_chart(filtered_df.groupby("year").size().pct_change()*100)
-
-elif insight_option == "Shallow vs Deep Ratio":
-    ratio = filtered_df.groupby("country")["depth_category"].value_counts().unstack().fillna(0)
-    ratio["ratio"] = ratio.get("shallow",0)/(ratio.get("deep",0)+1)
-    st.dataframe(ratio.head(20))
-
-elif insight_option == "Tsunami vs Magnitude":
-    st.bar_chart(filtered_df.groupby("tsunami_flag")["mag"].mean())
-
-elif insight_option == "Close-Time Earthquakes":
-
-    temp = filtered_df.copy()
-
-    temp["time"] = pd.to_datetime(
-        temp["time"],
-        errors="coerce"
-    )
-
-    temp = temp.sort_values("time")
-
-    temp["diff"] = (
-        temp["time"]
-        .diff()
-        .dt.total_seconds()/60
-    )
-
-    st.dataframe(
-        temp[temp["diff"] < 60].head(20)
-    )
-elif insight_option == "Top Countries by Frequency & Magnitude":
-
-    country_stats = (
-        filtered_df.groupby("country")
-        .agg(
-            freq=("id", "count"),
-            avg_mag=("mag", "mean")
-        )
-        .sort_values(
-            ["freq", "avg_mag"],
-            ascending=False
-        )
-        .head(10)
-    )
-
-    st.dataframe(country_stats)

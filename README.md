@@ -1,184 +1,231 @@
-Global Seismic Trends
-End-to-End Data Science Project
-Project Overview
+# Global Seismic Trends Analysis (2021–2025)
 
-This project is an end-to-end data science application designed to analyze global earthquake trends using real-world data. The dataset is collected from the USGS Earthquake API and processed using Python. The cleaned data is stored in a MySQL database, analyzed using SQL queries, and finally visualized through an interactive Streamlit dashboard.
+## Project Overview
 
-The main objective of this project is to understand global seismic patterns, earthquake frequency, magnitude distribution, depth characteristics, and tsunami-related events over recent years.
+This project analyzes global earthquake data collected from the United States Geological Survey (USGS) API for the period **2021 to 2025**. The objective is to build a complete data pipeline that collects, cleans, stores, analyzes, and visualizes earthquake data to identify global seismic trends.
 
-Project Objectives
+The project follows an end-to-end data analytics workflow using **Python**, **MySQL**, **SQL**, and **Streamlit**.
 
-The key objectives of this project are:
+---
 
-To collect real-time earthquake data from a reliable public source
+## Objectives
 
-To clean and preprocess raw seismic data
+* Collect global earthquake data from the USGS API.
+* Clean and preprocess the raw dataset.
+* Store the processed data in a MySQL database.
+* Perform SQL-based exploratory and analytical queries.
+* Build an interactive Streamlit dashboard for data visualization.
 
-To store structured data in a relational database
+---
 
-To perform analytical queries using SQL
+## Technologies Used
 
-To visualize insights using an interactive dashboard
+* Python
+* Pandas
+* Requests
+* Regular Expressions (Regex)
+* SQLAlchemy
+* MySQL
+* SQL
+* Streamlit
+* Plotly
 
-To present meaningful patterns and trends from global earthquake data
+---
 
-Data Source
+## Project Workflow
 
-The earthquake data is obtained from the United States Geological Survey (USGS) Earthquake API.
-This API provides detailed information such as:
+### 1. Data Collection
 
-Earthquake magnitude
+The `fetch_usgs_data.py` script retrieves earthquake records from the USGS Earthquake API.
 
-Location and coordinates
+Tasks performed:
 
-Depth
+* Connects to the USGS API.
+* Downloads earthquake records from 2021 to 2025.
+* Retrieves earthquake details such as magnitude, location, depth, coordinates, and timestamps.
+* Converts the API response into a Pandas DataFrame.
+* Saves the raw dataset as a CSV file.
 
-Time and date
+Output:
 
-Tsunami indicators
+```
+data/raw/usgs_earthquakes_raw.csv
+```
 
-Reporting network and event metadata
+---
 
-Project Architecture
+### 2. Data Cleaning and Preprocessing
 
-The project follows a clear step-by-step pipeline:
+The `clean_usgs_data.py` script prepares the raw dataset for analysis.
 
-Data Extraction using USGS API
+Tasks performed:
 
-Data Cleaning and Feature Engineering using Python
+* Converts timestamp columns into datetime format.
+* Handles missing values.
+* Creates new columns:
 
-Data Storage in MySQL Database
+  * Year
+  * Month
+  * Day
+  * Hour
+  * Day of Week
+* Extracts country names from the location column using Regular Expressions.
+* Categorizes earthquake depth into:
 
-SQL-based Data Analysis
+  * Shallow
+  * Intermediate
+  * Deep
+* Creates a Strong Earthquake Flag.
+* Creates a Tsunami Flag.
+* Saves the cleaned dataset.
 
-Interactive Visualization using Streamlit
+Output:
 
-Each stage of the pipeline is implemented as a separate Python script for better modularity and clarity.
+```
+data/processed/usgs_earthquakes_cleaned.csv
+```
 
-Tools and Technologies Used
-Programming and Libraries
+---
 
-Python
+### 3. Data Loading
 
-Pandas
+The `load_to_mysql.py` script loads the processed dataset into MySQL.
 
-Requests
+Tasks performed:
 
-Plotly
+* Reads the cleaned CSV file.
+* Connects to the MySQL database.
+* Loads all earthquake records into the `earthquakes` table using SQLAlchemy.
 
-Streamlit
+Database:
 
-Database and Querying
-
-MySQL
-
-SQL
-
-Development and Version Control
-
-Visual Studio Code
-
-Git
-
-GitHub
-
-Data Collection
-
-The data collection process is implemented using Python and the USGS API.
-The script fetches earthquake records in batches and extracts both property-level data and geographical coordinates.
-The raw data is saved in CSV format for further processing.
-
-Data Cleaning and Feature Engineering
-
-The raw data contains missing values, nested fields, and inconsistent formats.
-The cleaning process includes:
-
-Handling missing and null values
-
-Extracting latitude, longitude, and depth from coordinate arrays
-
-Converting timestamps to readable datetime format
-
-Creating new features such as year, month, day, hour, and day of week
-
-Categorizing earthquakes based on depth
-
-Creating flags for strong earthquakes and tsunami events
-
-The cleaned dataset is saved as a processed CSV file.
-
-Database Design
-
-The cleaned data is loaded into a MySQL database.
-A structured table is created with appropriate data types for numerical, categorical, and datetime fields.
-Each earthquake event is uniquely identified using its USGS event ID.
-
-SQL Analysis
-
-SQL queries are used to analyze the stored earthquake data.
-The analysis focuses on:
-
-Earthquake count by year, month, and day of week
-
-Average and maximum earthquake magnitudes
-
-Distribution of earthquakes by depth category
-
-Country-wise earthquake frequency
-
-Strong earthquake occurrences
-
-Tsunami-related earthquake analysis
-
-Network-wise reporting statistics
-
-These queries help convert raw data into meaningful analytical insights.
-
-Streamlit Dashboard
-
-An interactive dashboard is built using Streamlit to visualize the analysis results.
-The dashboard includes:
-
-Filters for year, magnitude range, and country
-
-Key performance indicators such as total earthquakes and average magnitude
-
-Bar charts showing earthquake frequency over time
-
-Histogram for magnitude distribution
-
-Country-wise earthquake comparison
-
-A user-controlled global earthquake map displaying top events by magnitude
-
-The dashboard allows users to explore the data dynamically based on their preferences.
-
-Key Insights
-
-Based on the analysis, the following insights are observed:
-
-Earthquake activity varies significantly across different regions
-
-Shallow earthquakes occur more frequently than deep earthquakes
-
-Strong earthquakes are less frequent but contribute significantly to seismic risk
-
-Tsunami-triggering earthquakes are rare but critical events
-
-Certain countries and regions consistently show higher seismic activity
-
-Project Outcomes
-
-This project demonstrates the complete lifecycle of a data science solution, from data acquisition to visualization.
-It highlights practical skills in data engineering, SQL analysis, and dashboard development.
-The project is scalable and can be extended with real-time updates, predictive models, or cloud deployment.
-
-Conclusion
-
-The Global Seismic Trends project successfully transforms raw earthquake data into actionable insights.
-It showcases a structured approach to solving real-world data problems using Python, SQL, and visualization tools.
-This project reflects practical data science skills and analytical thinking applicable to industry-level problems.
-
-Author
-
-Keerthana
+```
+global_seismic_trends
+```
+
+Table:
+
+```
+earthquakes
+```
+
+---
+
+### 4. SQL Analysis
+
+The `analyze_data.py` script performs SQL analysis on the stored earthquake data.
+
+The project includes **30 SQL analytical queries**, including:
+
+* Strongest earthquakes
+* Deepest earthquakes
+* Earthquakes by year
+* Earthquakes by month
+* Earthquakes by country
+* Average magnitude
+* Average depth
+* Tsunami analysis
+* Alert level analysis
+* Network analysis
+* Strong earthquake percentage
+* Deep earthquake analysis
+* Year-over-year growth
+* Data quality analysis
+
+---
+
+### 5. Interactive Dashboard
+
+The project includes a Streamlit dashboard for interactive analysis.
+
+Features:
+
+* Year filter
+* Country filter
+* Minimum magnitude filter
+* 30 SQL analysis options
+* Interactive Plotly visualizations
+* Query result table
+* User-friendly interface
+
+---
+
+## Database Schema
+
+The project stores earthquake information including:
+
+* Earthquake ID
+* Magnitude
+* Place
+* Time
+* Updated Time
+* Time Zone
+* Coordinates
+* Depth
+* Country
+* Magnitude Type
+* Alert Level
+* Status
+* Tsunami Information
+* Strong Earthquake Flag
+* Depth Category
+* Date and Time Features
+
+---
+
+## Key Insights
+
+* A total of **137,461 earthquake events** were analyzed between 2021 and 2025.
+* The strongest earthquake had a magnitude of **8.8**.
+* The deepest earthquake occurred near **Vanuatu**.
+* **2025** recorded the highest number of earthquakes.
+* **2024** recorded the lowest number of earthquakes.
+* **July** and **December** experienced the highest earthquake activity.
+* **Alaska** recorded the highest number of earthquakes.
+* **Fiji** had the highest number of deep earthquakes.
+* Strong earthquakes (Magnitude ≥ 6) were very rare.
+* Earthquakes associated with tsunamis generally had higher magnitudes.
+* Most earthquake records were reviewed, indicating good data quality.
+* Deep earthquakes had a higher average magnitude than shallow earthquakes.
+
+---
+
+## Project Structure
+
+```text
+Global_Seismic_Trends/
+│
+├── data/
+│   ├── raw/
+│   │   └── usgs_earthquakes_raw.csv
+│   │
+│   └── processed/
+│       └── usgs_earthquakes_cleaned.csv
+│
+├── scripts/
+│   ├── fetch_usgs_data.py
+│   ├── clean_usgs_data.py
+│   ├── load_to_mysql.py
+│   └── analyze_data.py
+│
+├── dashboard/
+│   └── app.py
+│
+├── requirements.txt
+└── README.md
+```
+
+---
+
+## Future Enhancements
+
+* Deploy the Streamlit dashboard online.
+* Add interactive map visualization of earthquake locations.
+* Implement real-time earthquake monitoring using the USGS API.
+* Build machine learning models for earthquake trend prediction.
+
+---
+
+## Conclusion
+
+This project demonstrates a complete end-to-end data analytics workflow by integrating API-based data collection, data preprocessing, relational database management, SQL analytics, and interactive dashboard development. The resulting dashboard enables users to explore global earthquake trends efficiently through visualizations and SQL-driven insights.
